@@ -66,7 +66,7 @@ func (c *Conn) writePrepared(ctx context.Context, pm *PreparedMessage) error {
 		return err
 	}
 
-	p, err := pm.compress()
+	p, compressed, err := pm.compress()
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (c *Conn) writePrepared(ctx context.Context, pm *PreparedMessage) error {
 	}
 	defer c.msgWriter.mu.unlock()
 
-	_, err = c.writeFrame(ctx, true, true, c.msgWriter.opcode, p)
+	_, err = c.writeFrame(ctx, true, compressed, c.msgWriter.opcode, p)
 	return err
 }
 
@@ -213,7 +213,19 @@ func (mw *msgWriter) writeCompressedFrame(ctx context.Context, p []byte) (int, e
 
 	mw.closed = true
 
-	_, err = mw.c.writeFrame(ctx, true, true, mw.opcode, buf.Bytes())
+	// Without context takeover, the peer keeps no history between messages,
+	// so a message that compression does not make smaller is sent as is.
+	// With context takeover, the message is already in our sliding window
+	// and must be sent compressed to keep the peer's window in sync, as
+	// uncompressed messages do not affect it.
+	// See https://tools.ietf.org/html/rfc7692#section-7.2.3.2
+	compressed := mw.flateContextTakeover() || buf.Len() < len(p)
+	b := p
+	if compressed {
+		b = buf.Bytes()
+	}
+
+	_, err = mw.c.writeFrame(ctx, true, compressed, mw.opcode, b)
 	if err != nil {
 		return 0, err
 	}

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/coder/websocket/internal/test/assert"
+	"github.com/coder/websocket/internal/test/xrand"
 )
 
 type bufConn struct {
@@ -30,6 +31,8 @@ func TestWritePreparedWire(t *testing.T) {
 	largeMsg := strings.Repeat("prepared message ", 100)
 	smallMsg := "small"
 	nextMsg := []byte(strings.Repeat("next message ", 100))
+	// Random bytes do not compress, so compression makes them larger.
+	incompressibleMsg := string(xrand.Bytes(1024))
 
 	testCases := []struct {
 		name   string
@@ -43,6 +46,8 @@ func TestWritePreparedWire(t *testing.T) {
 		{"NoContextTakeover/AboveThreshold", CompressionNoContextTakeover.opts(), largeMsg, true},
 		{"NoContextTakeover/AtThreshold", CompressionNoContextTakeover.opts(), strings.Repeat("a", 512), true},
 		{"NoContextTakeover/BelowThreshold", CompressionNoContextTakeover.opts(), strings.Repeat("a", 511), false},
+		{"ContextTakeover/Incompressible", CompressionContextTakeover.opts(), incompressibleMsg, false},
+		{"NoContextTakeover/Incompressible", CompressionNoContextTakeover.opts(), incompressibleMsg, false},
 		// Only the server side of the negotiated options applies to server writes.
 		{"ServerNoContextTakeover", &compressionOptions{serverNoContextTakeover: true}, largeMsg, true},
 		{"ClientNoContextTakeover", &compressionOptions{clientNoContextTakeover: true}, largeMsg, false},
@@ -83,7 +88,7 @@ func TestWritePreparedWire(t *testing.T) {
 			}
 
 			assert.Equal(t, "wire bytes", wantBuf.Bytes(), gotBuf.Bytes())
-			assert.Equal(t, "shared", tc.shared, pm.compressed != nil)
+			assert.Equal(t, "shared", tc.shared, pm.compressed)
 		})
 	}
 }

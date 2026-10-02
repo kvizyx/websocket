@@ -43,8 +43,10 @@ type PreparedMessage struct {
 	typ  MessageType
 	data []byte
 
+	// Written to connections that compress without context takeover.
 	compressOnce sync.Once
-	compressed   []byte
+	deflated     []byte // Compressed data, set only if smaller than data.
+	compressed   bool   // Whether deflated is written instead of data.
 	compressErr  error
 }
 
@@ -56,8 +58,10 @@ func NewPreparedMessage(typ MessageType, data []byte) *PreparedMessage {
 	}
 }
 
-// compress returns the payload of PreparedMessage compressed without context takeover.
-func (pm *PreparedMessage) compress() ([]byte, error) {
+// compress returns the bytes to write on connections that compress without
+// context takeover and whether they are compressed. They are the original
+// data if compression does not make it smaller.
+func (pm *PreparedMessage) compress() ([]byte, bool, error) {
 	pm.compressOnce.Do(func() {
 		var buf bytes.Buffer
 
@@ -79,7 +83,12 @@ func (pm *PreparedMessage) compress() ([]byte, error) {
 			return
 		}
 
-		pm.compressed = buf.Bytes()
+		if buf.Len() < len(pm.data) {
+			pm.deflated, pm.compressed = buf.Bytes(), true
+		}
 	})
-	return pm.compressed, pm.compressErr
+	if !pm.compressed {
+		return pm.data, false, pm.compressErr
+	}
+	return pm.deflated, true, nil
 }
