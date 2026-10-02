@@ -23,8 +23,8 @@ func (*bufConn) Close() error {
 
 // TestWritePreparedWire verifies that WritePrepared puts the same bytes on the
 // wire as Write, including for messages written after it, and that the
-// compressed payload is shared only when the connection compresses the
-// message without context takeover.
+// shared compressed payload is written only when the connection compresses
+// without context takeover and compression makes the message smaller.
 func TestWritePreparedWire(t *testing.T) {
 	t.Parallel()
 
@@ -35,10 +35,13 @@ func TestWritePreparedWire(t *testing.T) {
 	incompressibleMsg := string(xrand.Bytes(1024))
 
 	testCases := []struct {
-		name   string
-		copts  *compressionOptions
-		msg    string
-		shared bool // Whether the compressed payload of the message is shared.
+		name  string
+		copts *compressionOptions
+		msg   string
+		// Whether the shared compressed payload is written. It is false both
+		// when the regular write path is used and when the message is written
+		// as is because compression does not make it smaller.
+		wantCompressed bool
 	}{
 		{"Disabled", nil, largeMsg, false},
 		{"ContextTakeover/AboveThreshold", CompressionContextTakeover.opts(), largeMsg, false},
@@ -66,7 +69,7 @@ func TestWritePreparedWire(t *testing.T) {
 					bw:    bufio.NewWriter(rwc),
 				})
 				t.Cleanup(func() {
-					c.CloseNow()
+					_ = c.CloseNow()
 				})
 				return c, rwc
 			}
@@ -88,7 +91,7 @@ func TestWritePreparedWire(t *testing.T) {
 			}
 
 			assert.Equal(t, "wire bytes", wantBuf.Bytes(), gotBuf.Bytes())
-			assert.Equal(t, "shared", tc.shared, pm.compressed)
+			assert.Equal(t, "compressed", tc.wantCompressed, pm.compressed)
 		})
 	}
 }
