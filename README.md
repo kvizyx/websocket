@@ -48,10 +48,11 @@ See GitHub issues for minor issues but the major future enhancements are:
 
 ## Examples
 
-For a production quality example that demonstrates the complete API, see the
+- Production quality example that demonstrates the complete API, see the
 [echo example](./internal/examples/echo).
-
-For a full stack example, see the [chat example](./internal/examples/chat).
+- Full stack example, see the [chat example](./internal/examples/chat).
+- Broadcasting a message to many connections with `PreparedMessage`, see the
+[broadcast example](./internal/examples/broadcast).
 
 ### Server
 
@@ -107,7 +108,6 @@ c.Close(websocket.StatusNormalClosure, "")
 Advantages of [gorilla/websocket](https://github.com/gorilla/websocket):
 
 - Mature and widely used
-- [Prepared writes](https://pkg.go.dev/github.com/gorilla/websocket#PreparedMessage)
 - Configurable [buffer sizes](https://pkg.go.dev/github.com/gorilla/websocket#hdr-Buffers)
 
 Advantages of github.com/coder/websocket:

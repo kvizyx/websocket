@@ -48,6 +48,39 @@ func (c *Conn) Write(ctx context.Context, typ MessageType, p []byte) error {
 	return nil
 }
 
+// WritePrepared writes a prepared message to the connection.
+//
+// It behaves like Write but reuses the compressed payload of pm across
+// connections where possible. See PreparedMessage.
+func (c *Conn) WritePrepared(ctx context.Context, pm *PreparedMessage) error {
+	err := c.writePrepared(ctx, pm)
+	if err != nil {
+		return fmt.Errorf("failed to write prepared msg: %w", err)
+	}
+	return nil
+}
+
+func (c *Conn) writePrepared(ctx context.Context, pm *PreparedMessage) error {
+	if !c.flate() || len(pm.data) < c.flateThreshold || c.msgWriter.flateContextTakeover() {
+		_, err := c.write(ctx, pm.typ, pm.data)
+		return err
+	}
+
+	p, err := pm.compress()
+	if err != nil {
+		return err
+	}
+
+	err = c.msgWriter.reset(ctx, pm.typ)
+	if err != nil {
+		return err
+	}
+	defer c.msgWriter.mu.unlock()
+
+	_, err = c.writeFrame(ctx, true, true, c.msgWriter.opcode, p)
+	return err
+}
+
 type msgWriter struct {
 	c *Conn
 
