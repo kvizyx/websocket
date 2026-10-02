@@ -50,8 +50,13 @@ func TestConn(t *testing.T) {
 
 				c1.SetReadLimit(131072)
 
+				// Interleave prepared writes with regular writes, as they share
+				// the compression state of the connection.
 				for range 5 {
 					err := wstest.Echo(tt.ctx, c1, 131072)
+					assert.Success(t, err)
+
+					err = wstest.EchoPrepared(tt.ctx, c1, 131072)
 					assert.Success(t, err)
 				}
 
