@@ -13,7 +13,7 @@ import (
 
 // Test_broadcastServer subscribes clients with and without compression,
 // publishes messages below and above the compression threshold and ensures
-// every client receives all of them.
+// every client receives all of them, while invalid UTF-8 is rejected.
 func Test_broadcastServer(t *testing.T) {
 	t.Parallel()
 
@@ -43,15 +43,22 @@ func Test_broadcastServer(t *testing.T) {
 		"hello",
 		strings.Repeat("hello world ", 512),
 	}
-	for _, msg := range msgs {
+	publish := func(msg string, expStatus int) {
 		resp, err := http.Post(s.URL+"/publish", "text/plain", strings.NewReader(msg))
 		if err != nil {
 			t.Fatal(err)
 		}
 		resp.Body.Close()
-		if resp.StatusCode != http.StatusAccepted {
-			t.Fatalf("expected status %v but got %v", http.StatusAccepted, resp.StatusCode)
+		if resp.StatusCode != expStatus {
+			t.Fatalf("expected status %v but got %v", expStatus, resp.StatusCode)
 		}
+	}
+
+	// Published first, so reading the valid messages below fails if it was
+	// delivered.
+	publish("\xff", http.StatusBadRequest)
+	for _, msg := range msgs {
+		publish(msg, http.StatusAccepted)
 	}
 
 	for i, c := range clients {

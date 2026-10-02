@@ -22,9 +22,9 @@ import (
 //     CompressionContextTakeover when the client negotiates
 //     server_no_context_takeover. For a client, client_no_context_takeover
 //     plays the same role.
-//   - The message is at least as long as the compression threshold, 512 bytes by
-//     default for CompressionNoContextTakeover. Smaller messages are not
-//     compressed.
+//   - The message is at least as long as the compression threshold, 512 bytes
+//     by default when compressing without context takeover. Smaller messages
+//     are not compressed.
 //
 // Otherwise, Conn.WritePrepared costs the same as Conn.Write. With context takeover,
 // each connection compresses against the sliding window of its own previous

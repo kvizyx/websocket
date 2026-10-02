@@ -172,6 +172,6 @@ func Example_echo() {
 
 // This example demonstrates broadcasting messages to many subscribers with
 // a PreparedMessage.
-func ExampleConn_writePrepared() {
+func ExampleConn_WritePrepared() {
 	// https://github.com/coder/websocket/tree/master/internal/examples/broadcast
 }

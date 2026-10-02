@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/coder/websocket"
 )
@@ -85,8 +86,11 @@ func (bs *broadcastServer) subscribeHandler(w http.ResponseWriter, r *http.Reque
 
 // publishHandler reads the request body with a limit of 65536 bytes and then
 // publishes the received message.
+//
+// Messages are sent as text, which must be valid UTF-8, so other bodies are
+// rejected instead of being sent as invalid text messages.
 func (bs *broadcastServer) publishHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
@@ -94,6 +98,10 @@ func (bs *broadcastServer) publishHandler(w http.ResponseWriter, r *http.Request
 	msg, err := io.ReadAll(body)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
+		return
+	}
+	if !utf8.Valid(msg) {
+		http.Error(w, "message must be valid UTF-8", http.StatusBadRequest)
 		return
 	}
 

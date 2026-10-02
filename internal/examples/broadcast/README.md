@@ -16,7 +16,8 @@ $ websocat ws://127.0.0.1:8080/subscribe
 $ curl --data-binary 'hello' http://127.0.0.1:8080/publish
 ```
 
-Every published message is delivered to all subscribers.
+Every published message is delivered to all subscribers. Messages are sent as text, so
+`/publish` rejects bodies that are not valid UTF-8.
 
 ## Structure
 
@@ -32,6 +33,6 @@ Subscribers that do not support compression receive the same message uncompresse
 Publishing never blocks: a subscriber that cannot keep up with its queue is disconnected.
 
 `server_test.go` contains a test that subscribes clients with and without compression and
-ensures every client receives every published message.
+ensures every client receives every published message, while invalid UTF-8 is rejected.
 
 `main.go` brings it all together so that you can run it and play around with it.
